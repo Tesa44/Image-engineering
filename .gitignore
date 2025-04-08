@@ -1,0 +1,4 @@
+.venv
+iolab*/build/
+iolab*/dist/
+iolab*/**/*.spec
