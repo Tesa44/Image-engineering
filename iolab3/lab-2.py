@@ -1,8 +1,3 @@
-from matplotlib import pyplot as plt
-import numpy as np
-import binascii
-import cv2 as cv
-import math
 
 """Function definitions that are used in LSB steganography."""
 from matplotlib import pyplot as plt
@@ -11,7 +6,6 @@ import binascii
 import cv2 as cv
 import math
 
-plt.rcParams["figure.figsize"] = (18,10)
 def encode_as_binary_array(msg):
     """Encode a message as a binary string."""
     msg = msg.encode("utf-8")
@@ -84,43 +78,46 @@ def reveal_message(image, nbits=1, length=0):
         message = message[:mod]
     return message
 
-message = "ABCD"
-binary = encode_as_binary_array(message)
-print("Binary:", binary)
-message = decode_from_binary_array(binary)
-print("Retrieved message:", message)
-
-
 original_image = load_image("sunflower.png") # Wczytanie obrazka
-# Mnożenie stringów działa jak zwielokratnianie
-message = open("message.txt").read() * 1
-print(message)
+message = "Nad ludy i nad krole podniesiony; Na trzech stoi koronach, a sam bez korony; A zycie jego - trud trudow, A tytul jego - lud ludow; Z matki obcej, krew jego dawne bohatery, A imie jego czterdziesci i cztery."
 n = 1 # liczba najmłodszych bitów używanych do ukrycia wiadomości
 message = encode_as_binary_array(message) # Zakodowanie wiadomości jako ciąg 0 i 1
 image_with_message = hide_message(original_image, message, n) # Ukrycie wiadomości w obrazku
 save_image("image_with_message.png", image_with_message) # Zapisanie obrazka w formacie PNG
 save_image("image_with_message.jpg", image_with_message) # Zapisanie obrazka w formacie JPG
-image_with_message_png = load_image("image_with_message.png")
 # Wczytanie obrazka PNG
-image_with_message_jpg = load_image("image_with_message.jpg")
+image_with_message_png = load_image("image_with_message.png")
 # Wczytanie obrazka JPG
+image_with_message_jpg = load_image("image_with_message.jpg")
+
+# Odczytanie ukrytej wiadomości z PNG
 secret_message_png = decode_from_binary_array(
 reveal_message(image_with_message_png, nbits=n,
-length=len(message))) # Odczytanie ukrytej wiadomości z PNG
+length=len(message)))
+# Odczytanie ukrytej wiadomości z JPG
 secret_message_jpg = decode_from_binary_array(
 reveal_message(image_with_message_jpg, nbits=n,
-length=len(message))) # Odczytanie ukrytej wiadomości z JPG
+length=len(message)))
+
 print(secret_message_png)
 print(secret_message_jpg)
 # Wyświetlenie obrazków
 f, ar = plt.subplots(2,2)
-ar[0,0].imshow(original_image)
-ar[0,0].set_title("Original image")
-ar[0,1].imshow(image_with_message)
-ar[0,1].set_title("Image with message")
-ar[1,0].imshow(image_with_message_png)
-ar[1,0].set_title("PNG image")
-ar[1,1].imshow(image_with_message_jpg)
-ar[1,1].set_title("JPG image")
-
+plt.figure(figsize=(12,10))
+plt.subplot(2,2,1)
+plt.axis("off")
+plt.imshow(original_image)
+plt.title("Oryginalny obraz")
+plt.subplot(2,2,2)
+plt.axis("off")
+plt.imshow(image_with_message)
+plt.title("Obraz z ukrytym obrazkiem")
+plt.subplot(2,2,3)
+plt.axis("off")
+plt.imshow(image_with_message_png)
+plt.title("Obraz PNG")
+plt.subplot(2,2,4)
+plt.axis("off")
+plt.imshow(image_with_message_jpg)
+plt.title("Obraz JPG")
 plt.show()

@@ -4,6 +4,7 @@ import numpy as np
 import binascii
 import cv2 as cv
 import math
+from lorem.text import TextLorem
 
 def encode_as_binary_array(msg):
     """Encode a message as a binary string."""
@@ -42,34 +43,43 @@ def clamp(n, minn, maxn):
 def hide_message(image, message, nbits=1, spos=0):
     """Hide a message in an image (LSB).
     nbits: number of least significant bits
+    spos: start position to hide message
     """
-    nbits = clamp(nbits, 1, 8)
+    nbits = clamp(nbits, 1, 8) # nbits musi być z przedziału 1-8
     shape = image.shape
-    image = np.copy(image).flatten()
-    if len(message) > len(image) * nbits + spos:
+    image = np.copy(image).flatten() # Tworzenie tablicy jednowymiarowej
+    pixels = shape[0] * shape[1] * shape[2]
+    if len(message) > len(image) * nbits:
         raise ValueError("Message is to long :(")
+    # Podział wiadomości na bloki o długości nbits
     chunks = [message[i:i + nbits] for i in range(0, len(message),
     nbits)]
     for i, chunk in enumerate(chunks):
-        byte = "{:08b}".format(image[i + spos])
+        # Zamiana każdej wartości RGB na 8 bitów
+        byte = "{:08b}".format(image[(i + spos) % pixels])
+        # Sklejanie nowego bajta z części niezmienionej i bloku wiadomości
         new_byte = byte[:-nbits] + chunk
-        image[i + spos] = int(new_byte, 2)
+        # Zamiana spowrotem na liczbę całkowitą
+        image[(i + spos) % pixels] = int(new_byte, 2)
     return image.reshape(shape)
-def reveal_message(image, nbits=1, length=0):
+
+def reveal_message(image, nbits=1, length=0, spos=0):
     """Reveal the hidden message.
     nbits: number of least significant bits
     length: length of the message in bits.
+    spos: start position to hide message
     """
     nbits = clamp(nbits, 1, 8)
     shape = image.shape
     image = np.copy(image).flatten()
     length_in_pixels = math.ceil(length/nbits)
+    pixels = shape[0] * shape[1] * shape[2]
     if len(image) < length_in_pixels or length_in_pixels <= 0:
         length_in_pixels = len(image)
     message = ""
     i = 0
     while i < length_in_pixels:
-        byte = "{:08b}".format(image[i])
+        byte = "{:08b}".format(image[(i + spos) % pixels])
         message += byte[-nbits:]
         i += 1
     mod = length % -nbits
@@ -77,23 +87,22 @@ def reveal_message(image, nbits=1, length=0):
         message = message[:mod]
     return message
 
-# message = "Moja tajna wiadomość"
-# binary = encode_as_binary_array(message)
-# print("Binary:", binary)
-# message = decode_from_binary_array(binary)
-# print("Retrieved message:", message)
-
-
 original_image = load_image("sunflower.png") # Wczytanie obrazka
 
-def simulate(original_image, message, nbits):
+def simulate(original_image, message, nbits,spos):
     new_message = message
     encoded_message = encode_as_binary_array(new_message) # Zakodowanie wiadomości jako ciąg 0 i 1
-    image_with_message = hide_message(original_image, encoded_message, nbits) # Ukrycie wiadomości w obrazku
+    image_with_message = hide_message(original_image, encoded_message, nbits,spos) # Ukrycie wiadomości w obrazku
 
     return image_with_message
 
-plt.figure(figsize=(12,10))
-
-
+lorem = TextLorem(srange=(50000,50001))
+message = lorem.sentence()
+# image_with_message = simulate(original_image, message,6, 200000)
+results = [ simulate(original_image, message, n,200000) for n in range(6,9)]
+for idx, img in enumerate(results, 1):
+    plt.subplot(1, 3, idx)
+    plt.axis("off")
+    plt.imshow(img)
+    plt.title(f"Nbits = {idx+5}")
 plt.show()

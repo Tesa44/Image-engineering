@@ -204,7 +204,7 @@ def simulate_jpeg(image_rgb, QF=85):
 #     plt.axis('off')
 #     plt.show()
 
-image = cv2.imread("zad_4.png")
+image = cv2.imread("spectrum.png")
 compressed_50, size_50 = simulate_jpeg(image, QF=50)
 # compare_images(image, compressed_50)
 compressed_90, size_90 = simulate_jpeg(image, QF=90)

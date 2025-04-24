@@ -3,8 +3,6 @@ import numpy as np
 import binascii
 import cv2 as cv
 import math
-from lorem.text import TextLorem
-
 
 def encode_as_binary_array(msg):
     """Encode a message as a binary string."""
@@ -78,57 +76,64 @@ def reveal_message(image, nbits=1, length=0):
         message = message[:mod]
     return message
 
+def hide_image(image, secret_image_path, nbits=1):
+    with open(secret_image_path, "rb") as file:
+        secret_img = file.read()
+    secret_img = secret_img.hex()   #Zamiana na ciąg szesnastkowy
+    secret_img = [secret_img[i:i + 2] for i in range(0, len(secret_img), 2)] # Podzielenie ciągu na dwójki (po 8 bitów)
+    secret_img = ["{:08b}".format(int(el, base=16)) for el in secret_img]  # Zamiana hex na bin
+    secret_img = "".join(secret_img)    #Ciąg binarny
+    return hide_message(image, secret_img, nbits), len(secret_img)
 
-def count_mse(original_image, image):
-    error_sum = 0.0
-    num_pixels = np.prod(original_image.shape)  # Liczba pikseli w obrazie
-    height = original_image.shape[0]
-    width = original_image.shape[1]
-    channels = original_image.shape[2]
-    # Obliczanie sumy kwadratów różnic dla każdego piksela
-    for i in range(height):  # Iteracja po wierszach
-        for j in range(width):  # Iteracja po kolumnach
-            for k in range(channels):  # Iteracja po kanałach (RGB)
-                diff = original_image[i, j, k] - image[i, j, k]
-                error_sum += diff ** 2
-    # Obliczanie średniego błędu kwadratowego
-    mse = error_sum / num_pixels / channels
-    return mse
+def reveal_image_no_length(image, nbits=1):
+    """Reveal the hidden image without giving length of the image.
+        image: image with hidden image
+        nbits: number of least significant bits
+        """
+    nbits = clamp(nbits, 1, 8)
+    shape = image.shape
+    image = np.copy(image).flatten()
+    max_message_length = shape[0] * shape[1] * nbits
 
+    message = ""
+    i = 0
+    while i < max_message_length:
+        byte = "{:08b}".format(image[i])
+        message += byte[-nbits:]
+        i += 1
+    message = [message[i:i + 8] for i in range(0, len(message), 8)]  #Podział ciągu binarnego na 8 bitów
+    message = ["{:02x}".format(int(el, base=2)) for el in message]    #Zamiana 8 bitów na hex
 
+    secret_img = []
+    i = 0
+    # Przepisywanie danych dopóki nie trafimy na pierwsze wystąpienie numeru stopki (0xFFD9)
+    while message[i] != "ff" or message[i+1] != "d9":
+        secret_img.append(message[i])
+        i+=1
+    # Dodajemy ręcznie stopkę na koniec
+    secret_img.append("ff")
+    secret_img.append("d9")
+    secret_img = "".join(secret_img)    # Połączenie w jeden ciąg
+    data = binascii.a2b_hex(secret_img) # Przekonwertowanie stringa na dane heksadecymalne
+    with open('reveal_image-no_length.jpg', 'wb') as file:
+        file.write(data)
 
-image = load_image("sunflower.png") # Wczytanie obrazka
-lorem = TextLorem(srange=(10000,10001)) # funkcja do generowania tekstu
-message = lorem.sentence()
-n = 1 # liczba najmłodszych bitów używanych do ukrycia wiadomości
+    return load_image("reveal_image-no_length.jpg")
 
-def simulate(original_image, message, nbits):
-    new_message = message * nbits   # Zwiększamy rozmiar wiadomości, gdy możemy kodować na n bitach
-    encoded_message = encode_as_binary_array(new_message) # Zakodowanie wiadomości jako ciąg 0 i 1
-    image_with_message = hide_message(original_image, encoded_message, nbits) # Ukrycie wiadomości w obrazku
-    mse = count_mse(original_image, image_with_message) # Liczymy MSE
-    return image_with_message, mse
-
-results = [ simulate(image, message, n) for n in range(1,9)]
-# Wyświetlenie obrazków
-plt.figure(figsize=(12, 10))
-plt.subplot(3, 3, 1)
-plt.axis('off')
+image = load_image("rembrandt.png")
+image_with_secret, length_of_secret = hide_image(image,"hidden-image.jpg", 1)
+secret_image = reveal_image_no_length(image_with_secret)
+#Wyświetlanie
+plt.figure(figsize=(12,10))
+plt.subplot(2,2,1)
 plt.imshow(image)
-plt.title(f"Original Image")
+plt.title("Oryginalny obraz")
+plt.subplot(2,2,2)
+plt.imshow(image_with_secret)
+plt.title("Obraz z ukrytym obrazkiem")
+plt.imshow(image_with_secret)
+plt.subplot(2,2,3)
 
-for idx, (img, mse) in enumerate(results, 2):
-    plt.subplot(3, 3, idx)
-    plt.axis("off")
-    plt.imshow(img)
-    plt.title(f"Nbits = {idx-1} MSE = {round(mse,5)}")
-plt.show()
-
-#Wyświetlanie wykresu
-x = [int(i) for i in range(1, 9)]
-y = [ result[1] for result in results]
-plt.plot(x, y)
-plt.xlabel("NBits")
-plt.ylabel("MSE")
-plt.title("Podobieństwo obrazów w zależności od ilości kodowanych bitów")
+plt.imshow(secret_image)
+plt.title("Ukryty obraz")
 plt.show()
